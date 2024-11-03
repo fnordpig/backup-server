@@ -38,6 +38,7 @@
      vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
      wget
      git
+     zfs
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -63,6 +64,27 @@
   # (/run/current-system/configuration.nix). This is useful in case you
   # accidentally delete configuration.nix.
   # system.copySystemConfiguration = true;
+  services.dbus.enable = true;
+
+  # ZFS
+  boot.supportedFilesystems = [ "zfs" ];
+  boot.zfs.forceImportAll = true;
+  networking.hostId = "deadbeef";
+
+  services.zfs = {
+    autoScrub = {
+      enable = true;
+      interval = "weekly";  # Options: "daily", "weekly", etc.
+    };
+    autoSnapshot = {
+      enable = true;
+      frequent = 8;    # Keep last 8 frequent snapshots
+      hourly = 24;     # Keep last 24 hourly snapshots
+      daily = 7;       # Keep last 7 daily snapshots
+      weekly = 4;      # Keep last 4 weekly snapshots
+      monthly = 12;    # Keep last 12 monthly snapshots
+    };
+  };
 
   system.stateVersion = "24.11"; 
 }
