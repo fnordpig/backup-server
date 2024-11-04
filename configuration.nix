@@ -8,6 +8,7 @@
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
+      ./secrets.nix
     ];
 
   # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
@@ -68,7 +69,6 @@
 
   # ZFS
   boot.supportedFilesystems = [ "zfs" ];
-  boot.zfs.forceImportAll = true;
   networking.hostId = "deadbeef";
 
   services.zfs = {
@@ -86,6 +86,40 @@
     };
   };
 
+  # Timemachine
+  # Enable Samba service
+  services.samba = {
+    enable = true;
+    settings = {
+      "global" = {
+        "vfs objects" = "catia fruit streams_xattr";
+        "fruit:aapl" = "yes";
+        "logging" = "systemd";       # Use systemd for logging
+        "log level" = "1";           # Minimal logging level
+      };
+    };
+    # Define the Time Machine share
+    settings = {
+      "timemachine" = {
+        path = "/tank/timemachine";   # Make sure this directory exists
+        writable = true;
+        browseable = false;
+        "fruit:time machine" = "yes";
+        "fruit:encoding" = "native";
+        "fruit:locking" = "netatalk";
+        "fruit:metadata" = "stream";
+        "valid users" = [ "timemachine" ];
+      };
+    };
+  };
+
+  # Create Time Machine user
+  users.users.timemachine = {
+    isNormalUser = true;
+    extraGroups = [ "users" ];
+  };
+
+  # Do not edit
   system.stateVersion = "24.11"; 
 }
 

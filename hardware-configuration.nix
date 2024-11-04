@@ -18,6 +18,21 @@
       fsType = "ext4";
     };
 
+  fileSystems."/tank/backup" =
+    { device = "tank/backup";
+      fsType = "zfs";
+    };
+
+  fileSystems."/tank/timemachine" =
+    { device = "tank/timemachine";
+      fsType = "zfs";
+    };
+
+  fileSystems."/tank/shares" =
+    { device = "tank/shares";
+      fsType = "zfs";
+    };
+
   swapDevices = [ ];
 
   # Enables DHCP on each ethernet and wireless interface. In case of scripted networking
