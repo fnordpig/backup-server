@@ -6,6 +6,14 @@
 
 let
   secrets = import ./secrets.nix;
+  sambaUsers = lib.listToAttrs (map (user: {
+    name = user.username;
+    value = {
+      isNormalUser = true;
+      extraGroups = [ "users" ];
+      password = user.password;
+    };
+  }) secrets.sambaUsers);
 in
 {
   imports =
@@ -27,13 +35,13 @@ in
   # time.timeZone = "Europe/Amsterdam";
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
-  users.users.rwaugh = {
-     isNormalUser = true;
-     extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
-     packages = with pkgs; [
-	screen
-     ];
-  };
+  users.users = {
+    rwaugh = {
+      isNormalUser = true;
+      extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+      packages = with pkgs; [ screen ];
+    };
+  } // sambaUsers;
 
   # List packages installed in system profile. To search, run:
   # $ nix search wget
@@ -42,6 +50,7 @@ in
      wget
      git
      zfs
+     jq
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -117,25 +126,28 @@ in
         "fruit:metadata" = "stream";
         "valid users" = [ "timemachine" ];
       };
+      backup = {
+        path = "/tank/backup ";   
+        writable = true;
+        browseable = true;
+        "valid users" = [ "backup" ];
+      };
     };
   };  
 
-  # Add the user to Samba's passdb during system activation
-  system.activationScripts.addSambaUser = {
+  system.activationScripts.addSambaUsers = {
     text = ''
-      if ! ${pkgs.samba}/bin/pdbedit -L | grep -q "^timemachine:"; then
-        # Use the password from secrets and explicitly reference smbpasswd
-        echo -e "${secrets.sambaPasswords.timemachine}\n${secrets.sambaPasswords.timemachine}" | ${pkgs.samba}/bin/smbpasswd -a -s timemachine
-      fi
+      for user in ${lib.concatStringsSep " " (map (u: u.username) secrets.sambaUsers)}; do
+        # Find the corresponding password for each user in the secrets array
+        password=$(${pkgs.jq}/bin/jq -r ".sambaUsers[] | select(.username == \"$user\") | .password" <<<'${builtins.toJSON secrets}')
+
+        # Add user to Samba passdb if not already present
+        if ! ${pkgs.samba}/bin/pdbedit -L | grep -q "^$user:"; then
+          echo -e "$password\n$password" | ${pkgs.samba}/bin/smbpasswd -a -s "$user"
+        fi
+      done
     '';
   };
-  # Create Time Machine user
-  users.users.timemachine = {
-    isNormalUser = true;
-    extraGroups = [ "users" ];
-    password = "1234";
-  };
-
   # Do not edit
   system.stateVersion = "24.11"; 
 }
