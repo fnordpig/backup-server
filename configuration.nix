@@ -4,11 +4,13 @@
 
 { config, lib, pkgs, ... }:
 
+let
+  secrets = import ./secrets.nix;
+in
 {
   imports =
     [ # Include the results of the hardware scan.
       ./hardware-configuration.nix
-      ./secrets.nix
     ];
 
   # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
@@ -60,6 +62,7 @@
   # networking.firewall.allowedUDPPorts = [ ... ];
   # Or disable the firewall altogether.
   # networking.firewall.enable = false;
+  # networking.firewall.allowedTCPPorts = [ 137 138 139 445 ];
 
   # Copy the NixOS configuration file and link it from the resulting system
   # (/run/current-system/configuration.nix). This is useful in case you
@@ -88,22 +91,26 @@
 
   # Timemachine
   # Enable Samba service
+  
   services.samba = {
     enable = true;
+    openFirewall = true;
     settings = {
-      "global" = {
+      global = {
         "vfs objects" = "catia fruit streams_xattr";
         "fruit:aapl" = "yes";
         "logging" = "systemd";       # Use systemd for logging
-        "log level" = "1";           # Minimal logging level
+        "log level" = "3";           # Minimal logging level
+        "security" = "user";
+        "map to guest" = "Bad User";
+        "netbios name" = "babypool";
+        "name resolve order" = "wins bcast host";
+        "passdb backend" = "tdbsam";
       };
-    };
-    # Define the Time Machine share
-    settings = {
-      "timemachine" = {
-        path = "/tank/timemachine";   # Make sure this directory exists
+      timemachine = {
+        path = "/tank/timemachine";   
         writable = true;
-        browseable = false;
+        browseable = true;
         "fruit:time machine" = "yes";
         "fruit:encoding" = "native";
         "fruit:locking" = "netatalk";
@@ -111,12 +118,22 @@
         "valid users" = [ "timemachine" ];
       };
     };
-  };
+  };  
 
+  # Add the user to Samba's passdb during system activation
+  system.activationScripts.addSambaUser = {
+    text = ''
+      if ! ${pkgs.samba}/bin/pdbedit -L | grep -q "^timemachine:"; then
+        # Use the password from secrets and explicitly reference smbpasswd
+        echo -e "${secrets.sambaPasswords.timemachine}\n${secrets.sambaPasswords.timemachine}" | ${pkgs.samba}/bin/smbpasswd -a -s timemachine
+      fi
+    '';
+  };
   # Create Time Machine user
   users.users.timemachine = {
     isNormalUser = true;
     extraGroups = [ "users" ];
+    password = "1234";
   };
 
   # Do not edit
