@@ -18,8 +18,8 @@
       fsType = "ext4";
     };
 
-  fileSystems."/tank/backup" =
-    { device = "tank/backup";
+  fileSystems."/tank" =
+    { device = "tank";
       fsType = "zfs";
     };
 
@@ -30,6 +30,11 @@
 
   fileSystems."/tank/shares" =
     { device = "tank/shares";
+      fsType = "zfs";
+    };
+
+  fileSystems."/tank/backup" =
+    { device = "tank/backup";
       fsType = "zfs";
     };
 

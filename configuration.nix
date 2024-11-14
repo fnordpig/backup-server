@@ -51,6 +51,9 @@ in
      git
      zfs
      jq
+     parted
+     lsof
+     psmisc
   ];
 
   # Some programs need SUID wrappers, can be configured further or are
@@ -80,6 +83,7 @@ in
   services.dbus.enable = true;
 
   # ZFS
+  boot.zfs.package = pkgs.zfs_unstable;
   boot.supportedFilesystems = [ "zfs" ];
   networking.hostId = "deadbeef";
 
@@ -109,7 +113,7 @@ in
         "vfs objects" = "catia fruit streams_xattr";
         "fruit:aapl" = "yes";
         "logging" = "systemd";       # Use systemd for logging
-        "log level" = "3";           # Minimal logging level
+        "log level" = "2";           # Minimal logging level
         "security" = "user";
         "map to guest" = "Bad User";
         "netbios name" = "babypool";
