@@ -81,7 +81,7 @@ in
   # accidentally delete configuration.nix.
   # system.copySystemConfiguration = true;
   services.dbus.enable = true;
-
+  
   # ZFS
   boot.zfs.package = pkgs.zfs_unstable;
   boot.supportedFilesystems = [ "zfs" ];
