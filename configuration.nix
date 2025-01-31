@@ -34,11 +34,11 @@ in
   # Set your time zone.
   # time.timeZone = "Europe/Amsterdam";
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
+  # Define a user account. Don't forget to set a password with 'passwd'.
   users.users = {
     rwaugh = {
       isNormalUser = true;
-      extraGroups = [ "wheel" ]; # Enable ‘sudo’ for the user.
+      extraGroups = [ "wheel" ]; # Enable 'sudo' for the user.
       packages = with pkgs; [ screen ];
     };
   } // sambaUsers;
@@ -81,7 +81,7 @@ in
   # accidentally delete configuration.nix.
   # system.copySystemConfiguration = true;
   services.dbus.enable = true;
-  
+
   # ZFS
   boot.zfs.package = pkgs.zfs_unstable;
   boot.supportedFilesystems = [ "zfs" ];
@@ -104,7 +104,6 @@ in
 
   # Timemachine
   # Enable Samba service
-  
   services.samba = {
     enable = true;
     openFirewall = true;
@@ -131,7 +130,7 @@ in
         "valid users" = [ "timemachine" ];
       };
       backup = {
-        path = "/tank/backup ";   
+        path = "/tank/backup";   
         writable = true;
         browseable = true;
         "valid users" = [ "backup" ];
@@ -152,7 +151,42 @@ in
       done
     '';
   };
+
+  # Dynamic DNS Update Service
+  systemd.services.update-afraid-dns = {
+    description = "Update Afraid DNS with current IP";
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
+    
+    serviceConfig = {
+      Type = "oneshot";
+      User = "nobody";
+      DynamicUser = true;
+      StateDirectory = "afraid-dns";
+      RuntimeDirectory = "afraid-dns";
+    };
+
+    script = ''
+      STATE_FILE="/var/lib/afraid-dns/last_ip"
+      CURRENT_IP=$(${pkgs.curl}/bin/curl -s https://api.ipify.org)
+
+      if [ ! -f "$STATE_FILE" ] || [ "$(cat $STATE_FILE)" != "$CURRENT_IP" ]; then
+        # IP has changed or this is the first run
+        ${pkgs.curl}/bin/curl -s "https://freedns.afraid.org/dynamic/update.php?${secrets.afraidDnsKey}/"
+        echo "$CURRENT_IP" > "$STATE_FILE"
+      fi
+    '';
+  };
+
+  systemd.timers.update-afraid-dns = {
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnBootSec = "5min";
+      OnUnitActiveSec = "15min";
+      Unit = "update-afraid-dns.service";
+    };
+  };
+
   # Do not edit
   system.stateVersion = "24.11"; 
 }
-
